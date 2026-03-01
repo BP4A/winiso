@@ -1,0 +1,43 @@
+name: Build UUP (Windows Runner) and Upload to Trashbytes
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run UUP dump script (CMD)
+        run: |
+          uup_download_windows.cmd
+
+      # Kalau pakai PowerShell, ganti step di atas jadi:
+      # - name: Run UUP dump script (PowerShell)
+      #   shell: pwsh
+      #   run: |
+      #     ./uup_download_windows.ps1
+
+      - name: Find ISO or ZIP
+        shell: pwsh
+        run: |
+          $file = Get-ChildItem -Path . -Recurse -Include *.iso, *.zip |
+                  Sort-Object Length -Descending |
+                  Select-Object -First 1
+
+          if (-not $file) {
+            Write-Host "No ISO or ZIP found"
+            exit 1
+          }
+
+          echo "FILE=$($file.FullName)" >> $env:GITHUB_ENV
+          echo "FILENAME=$($file.Name)" >> $env:GITHUB_ENV
+
+      - name: Upload to Trashbytes
+        shell: pwsh
+        run: |
+          Write-Host "Uploading $env:FILENAME ..."
+          curl -# -T "$env:FILE" "https://w.trashbytes.net/t/$env:FILENAME"
